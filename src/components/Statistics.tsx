@@ -17,9 +17,10 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
  */
 interface StatisticsProps {
   logs: FoodLog[]
+  selectedDate?: string
 }
 
-const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
+const Statistics = React.memo(function Statistics({ logs, selectedDate }: StatisticsProps) {
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center bg-white rounded-2xl border border-gray-200 px-6">
@@ -41,7 +42,7 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
   const avgCalories = Math.round(totalCalories / logs.length)
   const avgProtein = Math.round(totalProtein / logs.length)
   const avgCarbs = Math.round(totalCarbs / logs.length)
-  // const avgFat = Math.round(totalFat / logs.length) // Unused
+  const avgFat = Math.round(totalFat / logs.length)
 
   const topFoods = logs
     .reduce(
@@ -235,11 +236,11 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {macroBreakdown.map((_, index) => (
+                {macroBreakdown.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `${Math.round(Number(value))} cal`} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '0.75rem' }} labelStyle={{ color: '#111827' }} />
+              <Tooltip formatter={(value) => `${Math.round(value)} cal`} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '0.75rem' }} labelStyle={{ color: '#111827' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>

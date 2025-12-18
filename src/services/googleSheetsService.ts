@@ -27,16 +27,14 @@ export interface SyncData {
 }
 
 class GoogleSheetsService {
-  // Use Netlify Function proxy endpoint
-  private deploymentUrl: string = '/.netlify/functions/gas-proxy'
+  private deploymentUrl: string = ''
 
   /**
    * Initialize with Google Apps Script deployment URL
    * @param url - The URL from Apps Script deployment
    */
-  // No-op: deploymentUrl is now fixed to the Netlify Function
   initialize(url: string) {
-    // this.deploymentUrl = url
+    this.deploymentUrl = url
   }
 
   /**
@@ -64,7 +62,7 @@ class GoogleSheetsService {
       // Use mode: 'no-cors' to avoid CORS preflight
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
         body: JSON.stringify(payload),
       })
 
@@ -109,7 +107,7 @@ class GoogleSheetsService {
           console.log('Syncing foods (debounced):', payload);
           await fetch(this.deploymentUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            mode: 'no-cors',
             body: JSON.stringify(payload),
           });
           console.log('✅ Foods synced to Google Sheets:', this.lastFoodsPayload ? this.lastFoodsPayload.length : 0);
@@ -142,7 +140,7 @@ class GoogleSheetsService {
     try {
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
         body: JSON.stringify({
           token: SHEET_AUTH_TOKEN,
           action: 'saveDailySummary',
@@ -185,7 +183,7 @@ class GoogleSheetsService {
     try {
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
         body: JSON.stringify({
           token: SHEET_AUTH_TOKEN,
           action: 'saveStatistics',
@@ -226,7 +224,7 @@ class GoogleSheetsService {
 
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
         body: JSON.stringify(payload),
       })
 
@@ -244,28 +242,27 @@ class GoogleSheetsService {
    */
   async loadDailyData(date: string): Promise<SyncData | null> {
     if (!this.deploymentUrl) {
-      console.warn('Google Sheets URL not configured');
-      return null;
+      console.warn('Google Sheets URL not configured')
+      return null
     }
+
     try {
-      const response = await fetch(this.deploymentUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: SHEET_AUTH_TOKEN,
-          action: 'loadDailyData',
-          date,
-        }),
-      });
-      const data = await response.json();
+      const response = await fetch(
+        `${this.deploymentUrl}?token=${SHEET_AUTH_TOKEN}&action=loadDailyData&date=${date}`,
+        {
+          method: 'GET',
+        }
+      )
+
+      const data = await response.json()
       if (data.error) {
-        console.error('Error loading from Google Sheets:', data.error);
-        return null;
+        console.error('Error loading from Google Sheets:', data.error)
+        return null
       }
-      return data;
+      return data
     } catch (error) {
-      console.error('Error loading from Google Sheets:', error);
-      return null;
+      console.error('Error loading from Google Sheets:', error)
+      return null
     }
   }
 
@@ -273,25 +270,25 @@ class GoogleSheetsService {
    * Get all custom foods from Google Sheets
    */
   async getFoods(): Promise<any[] | null> {
-    if (!this.deploymentUrl) return null;
+    if (!this.deploymentUrl) return null
+
     try {
-      const response = await fetch(this.deploymentUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: SHEET_AUTH_TOKEN,
-          action: 'getFoods',
-        }),
-      });
-      const data = await response.json();
+      const response = await fetch(
+        `${this.deploymentUrl}?token=${SHEET_AUTH_TOKEN}&action=getFoods`,
+        {
+          method: 'GET',
+        }
+      )
+
+      const data = await response.json()
       if (data.error) {
-        console.error('Error getting foods:', data.error);
-        return null;
+        console.error('Error getting foods:', data.error)
+        return null
       }
-      return data.foods || [];
+      return data.foods || []
     } catch (error) {
-      console.error('Error getting foods from Google Sheets:', error);
-      return null;
+      console.error('Error getting foods from Google Sheets:', error)
+      return null
     }
   }
 

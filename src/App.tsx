@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { FoodEntryForm, DailyTracker, FoodManagement, Statistics, SettingsModal, Footer, ErrorBoundary } from './components'
 import { Food, FoodLog, MacroGoals } from './types'
-import googleSheetsService from './services/googleSheetsService'
+import * as firebaseFoodsService from './services/firebaseFoodsService'
+import * as firebaseLogsService from './services/firebaseLogsService'
+import * as firebaseGoalsService from './services/firebaseGoalsService'
 import { getCurrentDateIST } from './utils/timezone'
 import { generateUUID } from './utils/id'
 
@@ -17,23 +19,22 @@ const DEFAULT_GOALS: MacroGoals = {
 function App() {
       const [foodsLoading, setFoodsLoading] = useState(false)
       const [foodsError, setFoodsError] = useState<string | null>(null)
-    // Load foods from Google Sheets on mount
+    // Load foods from Firebase on mount
     useEffect(() => {
       const loadFoods = async () => {
-        if (!googleSheetsService.isConfigured()) return
         setFoodsLoading(true)
         setFoodsError(null)
         try {
-          const foodsData = await googleSheetsService.getFoods()
+          const foodsData = await firebaseFoodsService.getFoods()
           if (foodsData && Array.isArray(foodsData)) {
             setFoods(foodsData)
-            console.log('✅ Loaded foods from Google Sheets:', foodsData.length)
+            console.log('✅ Loaded foods from Firebase:', foodsData.length)
           } else {
             setFoods([])
           }
         } catch (error) {
-          setFoodsError('Failed to load foods from Google Sheets.')
-          console.error('Failed to load foods from Google Sheets:', error)
+          setFoodsError('Failed to load foods from Firebase.')
+          console.error('Failed to load foods from Firebase:', error)
         } finally {
           setFoodsLoading(false)
         }
@@ -47,55 +48,38 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getCurrentDateIST())
 
-  // Initialize Google Sheets service on app load
+  // Load logs from Firebase when date changes
   useEffect(() => {
-    const url = 'https://script.google.com/macros/s/AKfycbyAdCA_O1UHdCU3l-yukuXZNDXEZE98pNzl0vQXoBQp85p8sYlpNSmnJziQx6xMn9k4/exec'
-    googleSheetsService.initialize(url)
-    console.log('Google Sheets integration initialized')
-  }, [])
-
-  // Load data from Google Sheets when date changes
-  useEffect(() => {
-    const loadFromSheets = async () => {
-      if (!googleSheetsService.isConfigured()) return
-
+    const loadLogs = async () => {
       try {
-        const data = await googleSheetsService.loadDailyData(selectedDate)
-        if (data && data.foodLogs && data.foodLogs.length > 0) {
-          console.log('📥 Loaded from Google Sheets:', data.foodLogs)
-          // Convert sheet data to app format
-          const convertedLogs = data.foodLogs.map((log: any) => ({
-            id: log.id || log.timestamp || Date.now().toString(),
-            foodId: 'imported',
-            foodName: log.foodName,
-            quantity: log.quantity,
-            calories: log.calories,
-            protein: log.protein,
-            carbs: log.carbs,
-            fat: log.fat,
-            timestamp: new Date(log.timestamp),
-          }))
-          setLogs(convertedLogs)
-          console.log('✅ Synced logs from Sheets:', convertedLogs.length, 'entries')
-        } else {
-          // No data for this date, clear logs
-          console.log('📭 No data in Google Sheets for', selectedDate)
-          setLogs([])
-        }
+        const logsData = await firebaseLogsService.getLogsByDate(selectedDate)
+        setLogs(logsData)
       } catch (error) {
-        console.error('Failed to load from Google Sheets:', error)
+        setLogs([])
+        console.error('Failed to load logs from Firebase:', error)
       }
     }
-
-    loadFromSheets()
+    loadLogs()
   }, [selectedDate])
 
-  const handleAddLog = (foodId: string, quantity: number) => {
+  // Load goals from Firebase on mount
+  useEffect(() => {
+    const loadGoals = async () => {
+      try {
+        const goalsData = await firebaseGoalsService.getGoals()
+        if (goalsData) setGoals(goalsData)
+      } catch (error) {
+        setGoals(DEFAULT_GOALS)
+        console.error('Failed to load goals from Firebase:', error)
+      }
+    }
+    loadGoals()
+  }, [])
+
+  const handleAddLog = async (foodId: string, quantity: number) => {
     const food = foods.find(f => f.id === foodId)
     if (!food) return
-
-    const newLog: FoodLog = {
-      id: generateUUID(),
+    const newLog: Omit<FoodLog, 'id'> = {
       foodId,
       foodName: food.name,
       quantity,
@@ -103,123 +87,65 @@ function App() {
       protein: Math.round(food.protein * quantity * 10) / 10,
       carbs: Math.round(food.carbs * quantity * 10) / 10,
       fat: Math.round(food.fat * quantity * 10) / 10,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     }
-
-    setLogs([newLog, ...logs])
+    try {
+      const added = await firebaseLogsService.addLog(selectedDate, newLog)
+      setLogs(prev => [added, ...prev])
+    } catch (error) {
+      console.error('Failed to add log to Firebase:', error)
+    }
   }
 
   // Immediate sync after delete, with error feedback
   const handleDeleteLog = async (logId: string) => {
-    const updatedLogs = logs.filter(l => l.id !== logId)
-    setLogs(updatedLogs)
-    // Immediately sync to Google Sheets after delete
     try {
-      const totals = updatedLogs.reduce(
-        (acc, log) => ({
-          calories: acc.calories + log.calories,
-          protein: acc.protein + log.protein,
-          carbs: acc.carbs + log.carbs,
-          fat: acc.fat + log.fat,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
-      )
-      const caloriePercent = goals.calories > 0 ? Math.min((totals.calories / goals.calories) * 100, 100) : 0
-      const success = await googleSheetsService.saveDailyData(selectedDate, updatedLogs, totals)
-      await googleSheetsService.saveDailySummary(
-        selectedDate,
-        totals,
-        goals.calories,
-        caloriePercent,
-        updatedLogs.length
-      )
-      // Statistics (optional, keep in sync)
-      const avgCalories = updatedLogs.length > 0 ? updatedLogs.reduce((sum, log) => sum + log.calories, 0) / updatedLogs.length : 0
-      const avgProtein = updatedLogs.length > 0 ? updatedLogs.reduce((sum, log) => sum + log.protein, 0) / updatedLogs.length : 0
-      const avgCarbs = updatedLogs.length > 0 ? updatedLogs.reduce((sum, log) => sum + log.carbs, 0) / updatedLogs.length : 0
-      const avgFat = updatedLogs.length > 0 ? updatedLogs.reduce((sum, log) => sum + log.fat, 0) / updatedLogs.length : 0
-      const daysLogged = updatedLogs.length > 0 ? 1 : 0
-      await googleSheetsService.saveStatistics(
-        selectedDate,
-        avgCalories,
-        avgProtein,
-        avgCarbs,
-        avgFat,
-        daysLogged
-      )
-      if (!success) {
-        alert('Failed to sync deleted log to Google Sheets. Please check your connection.')
-      }
+      await firebaseLogsService.deleteLog(selectedDate, logId)
+      setLogs(prev => prev.filter(l => l.id !== logId))
     } catch (error) {
-      alert('Error syncing with Google Sheets after deleting log. Please try again.')
-      console.error('Sync error after delete:', error)
+      console.error('Failed to delete log from Firebase:', error)
     }
   }
 
   const handleAddFood = async (foodData: Omit<Food, 'id'>) => {
-    const newFood: Food = {
-      ...foodData,
-      id: generateUUID(),
-    }
-    const updatedFoods = [...foods, newFood]
-    setFoods(updatedFoods)
-    if (googleSheetsService.isConfigured()) {
-      setFoodsLoading(true)
-      setFoodsError(null)
-      try {
-        await googleSheetsService.syncFoods(updatedFoods)
-        const foodsData = await googleSheetsService.getFoods()
-        if (foodsData && Array.isArray(foodsData)) {
-          setFoods(foodsData)
-        }
-      } catch (error) {
-        setFoodsError('Failed to sync foods to Google Sheets.')
-        console.error('Failed to reload foods after add:', error)
-      } finally {
-        setFoodsLoading(false)
-      }
+    setFoodsLoading(true)
+    setFoodsError(null)
+    try {
+      const added = await firebaseFoodsService.addFood(foodData)
+      setFoods(prev => [...prev, added])
+    } catch (error) {
+      setFoodsError('Failed to add food to Firebase.')
+      console.error('Failed to add food to Firebase:', error)
+    } finally {
+      setFoodsLoading(false)
     }
   }
 
   const handleEditFood = async (id: string, foodData: Omit<Food, 'id'>) => {
-    const updatedFoods = foods.map(f => (f.id === id ? { ...foodData, id } : f))
-    setFoods(updatedFoods)
-    if (googleSheetsService.isConfigured()) {
-      setFoodsLoading(true)
-      setFoodsError(null)
-      try {
-        await googleSheetsService.syncFoods(updatedFoods)
-        const foodsData = await googleSheetsService.getFoods()
-        if (foodsData && Array.isArray(foodsData)) {
-          setFoods(foodsData)
-        }
-      } catch (error) {
-        setFoodsError('Failed to sync foods to Google Sheets.')
-        console.error('Failed to reload foods after edit:', error)
-      } finally {
-        setFoodsLoading(false)
-      }
+    setFoodsLoading(true)
+    setFoodsError(null)
+    try {
+      await firebaseFoodsService.updateFood(id, foodData)
+      setFoods(prev => prev.map(f => (f.id === id ? { ...foodData, id } : f)))
+    } catch (error) {
+      setFoodsError('Failed to update food in Firebase.')
+      console.error('Failed to update food in Firebase:', error)
+    } finally {
+      setFoodsLoading(false)
     }
   }
 
   const handleDeleteFood = async (id: string) => {
-    const updatedFoods = foods.filter(f => f.id !== id)
-    setFoods(updatedFoods)
-    if (googleSheetsService.isConfigured()) {
-      setFoodsLoading(true)
-      setFoodsError(null)
-      try {
-        await googleSheetsService.syncFoods(updatedFoods)
-        const foodsData = await googleSheetsService.getFoods()
-        if (foodsData && Array.isArray(foodsData)) {
-          setFoods(foodsData)
-        }
-      } catch (error) {
-        setFoodsError('Failed to sync foods to Google Sheets.')
-        console.error('Failed to reload foods after delete:', error)
-      } finally {
-        setFoodsLoading(false)
-      }
+    setFoodsLoading(true)
+    setFoodsError(null)
+    try {
+      await firebaseFoodsService.deleteFood(id)
+      setFoods(prev => prev.filter(f => f.id !== id))
+    } catch (error) {
+      setFoodsError('Failed to delete food from Firebase.')
+      console.error('Failed to delete food from Firebase:', error)
+    } finally {
+      setFoodsLoading(false)
     }
   }
 
@@ -352,7 +278,7 @@ function App() {
 
         {activeTab === 'stats' && (
           <div className="animate-fadeIn">
-            <Statistics logs={logs} />
+            <Statistics logs={logs} selectedDate={selectedDate} />
           </div>
         )}
         </div>
@@ -378,7 +304,14 @@ function App() {
         isOpen={settingsOpen}
         goals={goals}
         onClose={() => setSettingsOpen(false)}
-        onSave={(newGoals) => setGoals(newGoals)}
+        onSave={async (newGoals) => {
+          setGoals(newGoals)
+          try {
+            await firebaseGoalsService.setGoals(newGoals)
+          } catch (error) {
+            console.error('Failed to save goals to Firebase:', error)
+          }
+        }}
       />
 
       <Footer activeTab={activeTab} onTabChange={setActiveTab} />
