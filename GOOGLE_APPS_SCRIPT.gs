@@ -381,34 +381,48 @@ function saveDailyData(data) {
  * Sync custom foods database
  */
 function syncFoods(data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet()
-  const sheet = ss.getSheetByName(CUSTOM_FOODS_SHEET)
-  const { foods } = data
+  const lock = LockService.getScriptLock();
+  try {
+    // Wait up to 10 seconds for lock
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CUSTOM_FOODS_SHEET);
+    const { foods } = data;
 
-  // Clear all existing foods (except header)
-  const values = sheet.getDataRange().getValues()
-  for (let i = values.length - 1; i > 0; i--) {
-    sheet.deleteRow(i + 1)
+    // Clear all existing foods (except header)
+    const values = sheet.getDataRange().getValues();
+    if (values.length > 1) {
+      sheet.deleteRows(2, values.length - 1);
+    }
+
+    // Add all foods (deduplicate by id in this batch)
+    if (foods && foods.length > 0) {
+      const seenIds = new Set();
+      foods.forEach((food) => {
+        if (!food.id || seenIds.has(food.id)) return;
+        seenIds.add(food.id);
+        sheet.appendRow([
+          food.id,
+          food.name,
+          food.calories,
+          food.protein,
+          food.carbs,
+          food.fat,
+          new Date().toISOString(),
+        ]);
+      });
+    }
+
+    return ContentService.createTextOutput(
+      JSON.stringify({ success: true, message: 'Foods synced', count: foods ? foods.length : 0 })
+    ).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ error: 'syncFoods lock error: ' + err })
+    ).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
   }
-
-  // Add all foods
-  if (foods && foods.length > 0) {
-    foods.forEach((food) => {
-      sheet.appendRow([
-        food.id,
-        food.name,
-        food.calories,
-        food.protein,
-        food.carbs,
-        food.fat,
-        new Date().toISOString(),
-      ])
-    })
-  }
-
-  return ContentService.createTextOutput(
-    JSON.stringify({ success: true, message: 'Foods synced', count: foods.length })
-  ).setMimeType(ContentService.MimeType.JSON)
 }
 
 /**

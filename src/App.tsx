@@ -5,16 +5,7 @@ import googleSheetsService from './services/googleSheetsService'
 import { getCurrentDateIST } from './utils/timezone'
 import { generateUUID } from './utils/id'
 
-const DEMO_FOODS: Food[] = [
-  { id: '1', name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-  { id: '2', name: 'Rice', calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
-  { id: '3', name: 'Egg', calories: 155, protein: 13, carbs: 1.1, fat: 11 },
-  { id: '4', name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
-  { id: '5', name: 'Broccoli', calories: 34, protein: 3.7, carbs: 7, fat: 0.4 },
-  { id: '6', name: 'Salmon', calories: 208, protein: 20, carbs: 0, fat: 13 },
-  { id: '7', name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 },
-  { id: '8', name: 'Milk', calories: 42, protein: 3.4, carbs: 5, fat: 1 },
-]
+
 
 const DEFAULT_GOALS: MacroGoals = {
   calories: 2500,
@@ -24,7 +15,32 @@ const DEFAULT_GOALS: MacroGoals = {
 }
 
 function App() {
-  const [foods, setFoods] = useState<Food[]>(DEMO_FOODS)
+      const [foodsLoading, setFoodsLoading] = useState(false)
+      const [foodsError, setFoodsError] = useState<string | null>(null)
+    // Load foods from Google Sheets on mount
+    useEffect(() => {
+      const loadFoods = async () => {
+        if (!googleSheetsService.isConfigured()) return
+        setFoodsLoading(true)
+        setFoodsError(null)
+        try {
+          const foodsData = await googleSheetsService.getFoods()
+          if (foodsData && Array.isArray(foodsData)) {
+            setFoods(foodsData)
+            console.log('✅ Loaded foods from Google Sheets:', foodsData.length)
+          } else {
+            setFoods([])
+          }
+        } catch (error) {
+          setFoodsError('Failed to load foods from Google Sheets.')
+          console.error('Failed to load foods from Google Sheets:', error)
+        } finally {
+          setFoodsLoading(false)
+        }
+      }
+      loadFoods()
+    }, [])
+  const [foods, setFoods] = useState<Food[]>([])
   const [logs, setLogs] = useState<FoodLog[]>([])
   const [goals, setGoals] = useState<MacroGoals>(DEFAULT_GOALS)
   const [activeTab, setActiveTab] = useState<'tracker' | 'foods' | 'stats'>('tracker')
@@ -140,20 +156,71 @@ function App() {
     }
   }
 
-  const handleAddFood = (foodData: Omit<Food, 'id'>) => {
+  const handleAddFood = async (foodData: Omit<Food, 'id'>) => {
     const newFood: Food = {
       ...foodData,
       id: generateUUID(),
     }
-    setFoods([...foods, newFood])
+    const updatedFoods = [...foods, newFood]
+    setFoods(updatedFoods)
+    if (googleSheetsService.isConfigured()) {
+      setFoodsLoading(true)
+      setFoodsError(null)
+      try {
+        await googleSheetsService.syncFoods(updatedFoods)
+        const foodsData = await googleSheetsService.getFoods()
+        if (foodsData && Array.isArray(foodsData)) {
+          setFoods(foodsData)
+        }
+      } catch (error) {
+        setFoodsError('Failed to sync foods to Google Sheets.')
+        console.error('Failed to reload foods after add:', error)
+      } finally {
+        setFoodsLoading(false)
+      }
+    }
   }
 
-  const handleEditFood = (id: string, foodData: Omit<Food, 'id'>) => {
-    setFoods(foods.map(f => (f.id === id ? { ...foodData, id } : f)))
+  const handleEditFood = async (id: string, foodData: Omit<Food, 'id'>) => {
+    const updatedFoods = foods.map(f => (f.id === id ? { ...foodData, id } : f))
+    setFoods(updatedFoods)
+    if (googleSheetsService.isConfigured()) {
+      setFoodsLoading(true)
+      setFoodsError(null)
+      try {
+        await googleSheetsService.syncFoods(updatedFoods)
+        const foodsData = await googleSheetsService.getFoods()
+        if (foodsData && Array.isArray(foodsData)) {
+          setFoods(foodsData)
+        }
+      } catch (error) {
+        setFoodsError('Failed to sync foods to Google Sheets.')
+        console.error('Failed to reload foods after edit:', error)
+      } finally {
+        setFoodsLoading(false)
+      }
+    }
   }
 
-  const handleDeleteFood = (id: string) => {
-    setFoods(foods.filter(f => f.id !== id))
+  const handleDeleteFood = async (id: string) => {
+    const updatedFoods = foods.filter(f => f.id !== id)
+    setFoods(updatedFoods)
+    if (googleSheetsService.isConfigured()) {
+      setFoodsLoading(true)
+      setFoodsError(null)
+      try {
+        await googleSheetsService.syncFoods(updatedFoods)
+        const foodsData = await googleSheetsService.getFoods()
+        if (foodsData && Array.isArray(foodsData)) {
+          setFoods(foodsData)
+        }
+      } catch (error) {
+        setFoodsError('Failed to sync foods to Google Sheets.')
+        console.error('Failed to reload foods after delete:', error)
+      } finally {
+        setFoodsLoading(false)
+      }
+    }
   }
 
   // ...existing code...
@@ -268,6 +335,12 @@ function App() {
 
         {activeTab === 'foods' && (
           <div className="animate-fadeIn">
+            {foodsLoading && (
+              <div className="text-center py-4 text-blue-600 font-bold">Loading foods...</div>
+            )}
+            {foodsError && (
+              <div className="text-center py-4 text-red-600 font-bold">{foodsError}</div>
+            )}
             <FoodManagement
               foods={foods}
               onAddFood={handleAddFood}

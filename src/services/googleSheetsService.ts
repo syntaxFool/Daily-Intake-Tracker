@@ -78,33 +78,46 @@ class GoogleSheetsService {
    * Sync custom foods database
    * @param foods - Array of food objects
    */
+  // Debounce syncFoods to prevent rapid/parallel calls
+  private syncFoodsTimeout: NodeJS.Timeout | null = null;
+  private lastFoodsPayload: any[] | null = null;
   async syncFoods(foods: any[]) {
     if (!this.deploymentUrl) {
-      console.warn('Google Sheets URL not configured')
-      return false
+      console.warn('Google Sheets URL not configured');
+      return false;
     }
 
-    try {
-      const payload = {
-        token: SHEET_AUTH_TOKEN,
-        action: 'syncFoods',
-        foods,
-      }
+    // Save the latest foods payload
+    this.lastFoodsPayload = foods;
 
-      console.log('Syncing foods:', payload)
-
-      await fetch(this.deploymentUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(payload),
-      })
-
-      console.log('✅ Foods synced to Google Sheets:', foods.length)
-      return true
-    } catch (error) {
-      console.error('❌ Error syncing foods to Google Sheets:', error)
-      return false
+    // If a sync is already scheduled, clear it
+    if (this.syncFoodsTimeout) {
+      clearTimeout(this.syncFoodsTimeout);
     }
+
+    // Debounce: only send the latest foods after 1 second
+    return new Promise((resolve) => {
+      this.syncFoodsTimeout = setTimeout(async () => {
+        try {
+          const payload = {
+            token: SHEET_AUTH_TOKEN,
+            action: 'syncFoods',
+            foods: this.lastFoodsPayload,
+          };
+          console.log('Syncing foods (debounced):', payload);
+          await fetch(this.deploymentUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(payload),
+          });
+          console.log('✅ Foods synced to Google Sheets:', this.lastFoodsPayload ? this.lastFoodsPayload.length : 0);
+          resolve(true);
+        } catch (error) {
+          console.error('❌ Error syncing foods to Google Sheets:', error);
+          resolve(false);
+        }
+      }, 1000); // 1 second debounce
+    });
   }
 
   /**
