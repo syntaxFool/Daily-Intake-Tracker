@@ -204,13 +204,18 @@ function doGet(e) {
       responseData = { error: 'Invalid action' }
     }
 
-    return ContentService.createTextOutput(JSON.stringify(responseData)).setMimeType(
-      ContentService.MimeType.JSON
-    )
+    return ContentService.createTextOutput(JSON.stringify(responseData))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
   } catch (error) {
     return ContentService.createTextOutput(
       JSON.stringify({ error: error.toString() })
     ).setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
   }
 }
 
@@ -269,14 +274,19 @@ function doPost(e) {
       responseData = { error: 'Invalid action: ' + action }
     }
 
-    return ContentService.createTextOutput(JSON.stringify(responseData)).setMimeType(
-      ContentService.MimeType.JSON
-    )
+    return ContentService.createTextOutput(JSON.stringify(responseData))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
   } catch (error) {
     Logger.log('Main error: ' + error)
     return ContentService.createTextOutput(
       JSON.stringify({ error: error.toString() })
     ).setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
   }
 }
 

@@ -62,7 +62,7 @@ class GoogleSheetsService {
       // Use mode: 'no-cors' to avoid CORS preflight
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
@@ -107,7 +107,7 @@ class GoogleSheetsService {
           console.log('Syncing foods (debounced):', payload);
           await fetch(this.deploymentUrl, {
             method: 'POST',
-            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
           console.log('✅ Foods synced to Google Sheets:', this.lastFoodsPayload ? this.lastFoodsPayload.length : 0);
@@ -140,7 +140,7 @@ class GoogleSheetsService {
     try {
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: SHEET_AUTH_TOKEN,
           action: 'saveDailySummary',
@@ -183,7 +183,7 @@ class GoogleSheetsService {
     try {
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: SHEET_AUTH_TOKEN,
           action: 'saveStatistics',
@@ -224,7 +224,7 @@ class GoogleSheetsService {
 
       await fetch(this.deploymentUrl, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
