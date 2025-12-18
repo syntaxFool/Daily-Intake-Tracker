@@ -231,7 +231,7 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry) => `${entry.name} ${Math.round((entry.value / (totalProtein * 4 + totalCarbs * 4 + totalFat * 9)) * 100)}%`}
+                label={(entry: { name: string; value: number }) => `${entry.name} ${Math.round((entry.value / (totalProtein * 4 + totalCarbs * 4 + totalFat * 9)) * 100)}%`}
                 outerRadius={70}
                 fill="#8884d8"
                 dataKey="value"

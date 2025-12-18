@@ -12,12 +12,13 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
-
+    "recharts": "^3.6.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.0"
   }
