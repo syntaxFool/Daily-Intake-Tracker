@@ -17,7 +17,6 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
  */
 interface StatisticsProps {
   logs: FoodLog[]
-  selectedDate?: string
 }
 
 const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
@@ -42,7 +41,7 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
   const avgCalories = Math.round(totalCalories / logs.length)
   const avgProtein = Math.round(totalProtein / logs.length)
   const avgCarbs = Math.round(totalCarbs / logs.length)
-  // const avgFat = Math.round(totalFat / logs.length)
+  // const avgFat = Math.round(totalFat / logs.length) // Unused
 
   const topFoods = logs
     .reduce(
@@ -231,7 +230,7 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry: { name: string; value: number }) => `${entry.name} ${Math.round((entry.value / (totalProtein * 4 + totalCarbs * 4 + totalFat * 9)) * 100)}%`}
+                label={(entry) => `${entry.name} ${Math.round((entry.value / (totalProtein * 4 + totalCarbs * 4 + totalFat * 9)) * 100)}%`}
                 outerRadius={70}
                 fill="#8884d8"
                 dataKey="value"
@@ -240,7 +239,7 @@ const Statistics = React.memo(function Statistics({ logs }: StatisticsProps) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value?: number) => value !== undefined ? `${Math.round(value)} cal` : ''} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '0.75rem' }} labelStyle={{ color: '#111827' }} />
+              <Tooltip formatter={(value) => `${Math.round(Number(value))} cal`} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '0.75rem' }} labelStyle={{ color: '#111827' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>

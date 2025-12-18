@@ -352,7 +352,7 @@ function App() {
 
         {activeTab === 'stats' && (
           <div className="animate-fadeIn">
-            <Statistics logs={logs} selectedDate={selectedDate} />
+            <Statistics logs={logs} />
           </div>
         )}
         </div>

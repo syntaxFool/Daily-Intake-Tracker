@@ -1,7 +1,13 @@
+
 # Local Netlify folder
 .netlify
 
-# Node modules and cache (never track these)
-node_modules/
-dist/
-.cache/
+# Vite build output
+dist
+
+# Node modules
+node_modules
+
+# Environment files
+.env
+.env.*
