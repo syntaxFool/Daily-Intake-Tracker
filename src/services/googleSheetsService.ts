@@ -13,8 +13,6 @@
 // ⚠️ SECURITY: Change this to match your Apps Script AUTH_TOKEN
 const SHEET_AUTH_TOKEN = 'calorie-tracker-2025-secure-key-francis'
 
-// import { getCurrentTimestampIST } from '../utils/timezone'
-
 export interface SyncData {
   date: string
   foodLogs: any[]
@@ -57,16 +55,11 @@ class GoogleSheetsService {
         totals,
       }
 
-      console.log('Syncing daily data:', payload)
-
-      // Use mode: 'no-cors' to avoid CORS preflight
       await fetch(this.deploymentUrl, {
         method: 'POST',
         mode: 'no-cors',
         body: JSON.stringify(payload),
       })
-
-      console.log('✅ Daily data synced')
       return true
     } catch (error) {
       console.error('❌ Error saving to Google Sheets:', error)
@@ -104,13 +97,11 @@ class GoogleSheetsService {
             action: 'syncFoods',
             foods: this.lastFoodsPayload,
           };
-          console.log('Syncing foods (debounced):', payload);
           await fetch(this.deploymentUrl, {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify(payload),
           });
-          console.log('✅ Foods synced to Google Sheets:', this.lastFoodsPayload ? this.lastFoodsPayload.length : 0);
           resolve(true);
         } catch (error) {
           console.error('❌ Error syncing foods to Google Sheets:', error);
@@ -152,8 +143,7 @@ class GoogleSheetsService {
         }),
       })
 
-      // const text = await response.text()
-      console.log('✅ Daily summary synced')
+
       return true
     } catch (error) {
       console.error('❌ Error saving daily summary:', error)
@@ -196,7 +186,7 @@ class GoogleSheetsService {
         }),
       })
 
-      console.log('✅ Statistics synced')
+
       return true
     } catch (error) {
       console.error('❌ Error saving statistics:', error)
@@ -220,15 +210,11 @@ class GoogleSheetsService {
         value,
       }
 
-      console.log('Updating settings:', payload)
-
       await fetch(this.deploymentUrl, {
         method: 'POST',
         mode: 'no-cors',
         body: JSON.stringify(payload),
       })
-
-      console.log('✅ Settings updated in Google Sheets:', setting, '=', value)
       return true
     } catch (error) {
       console.error('❌ Error updating settings:', error)

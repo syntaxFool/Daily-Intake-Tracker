@@ -87,7 +87,7 @@ export function DailyTracker({ logs, goals, onDeleteLog, currentDate }: DailyTra
         avgFat,
         daysLogged
       )
-      console.log('✅ Synced with Google Sheets (debounced):', currentDate)
+
     }, 500) // Wait 500ms after last change before syncing
 
     return () => {
@@ -105,7 +105,7 @@ export function DailyTracker({ logs, goals, onDeleteLog, currentDate }: DailyTra
       try {
         const data = await googleSheetsService.loadDailyData(currentDate)
         if (data && data.foodLogs && data.foodLogs.length > 0) {
-          console.log('📥 Loaded from Google Sheets:', data.foodLogs)
+
           // Note: This would need to be passed to parent component to update state
           // For now, just log it to verify the load is working
         }

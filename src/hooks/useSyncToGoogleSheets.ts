@@ -37,7 +37,7 @@ export function useSyncToGoogleSheets({
       )
 
       if (success) {
-        console.log('Synced with Google Sheets:', currentDate)
+
       }
     } catch (error) {
       console.error('Failed to sync with Google Sheets:', error)

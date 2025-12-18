@@ -118,6 +118,12 @@ function initializeSheets() {
       'Created Date',
     ])
     sheet.setFrozenRows(1)
+    
+    // Add some sample foods to get started
+    sheet.appendRow(['sample-1', 'Banana', 89, 1.1, 22.8, 0.3, new Date().toISOString()])
+    sheet.appendRow(['sample-2', 'Apple', 52, 0.3, 13.8, 0.2, new Date().toISOString()])
+    sheet.appendRow(['sample-3', 'Rice (cooked)', 130, 2.7, 28, 0.3, new Date().toISOString()])
+    Logger.log('Created Custom Foods sheet with sample foods')
   }
 
   // Create Goals sheet
@@ -694,9 +700,21 @@ function getSettings() {
  * Get all custom foods
  */
 function getFoods() {
+  Logger.log('getFoods called')
   const ss = SpreadsheetApp.getActiveSpreadsheet()
   const sheet = ss.getSheetByName(CUSTOM_FOODS_SHEET)
+  
+  if (!sheet) {
+    Logger.log('Custom Foods sheet not found!')
+    return {
+      success: false,
+      error: 'Custom Foods sheet not found',
+      foods: [],
+    }
+  }
+  
   const values = sheet.getDataRange().getValues()
+  Logger.log('Custom Foods sheet has ' + values.length + ' rows')
 
   const foods = []
   for (let i = 1; i < values.length; i++) {
@@ -710,6 +728,7 @@ function getFoods() {
     })
   }
 
+  Logger.log('Returning ' + foods.length + ' foods')
   return {
     success: true,
     foods,
