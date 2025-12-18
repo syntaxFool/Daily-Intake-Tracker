@@ -1,3 +1,13 @@
+// Set this to your Netlify domain for CORS
+const NETLIFY_ORIGIN = 'https://sweet-rolypoly-9cef9d.netlify.app';
+
+function createCORSResponse(jsonString) {
+  return ContentService.createTextOutput(jsonString)
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', NETLIFY_ORIGIN)
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
 /**
  * GOOGLE APPS SCRIPT - Copy this into your Google Sheet's Apps Script editor
  * 
@@ -178,44 +188,39 @@ function doOptions(e) {
  * Handle GET requests
  */
 function doGet(e) {
+  // Handle preflight (_cors) requests
+  if (e && e.parameter && e.parameter._cors) {
+    return ContentService.createTextOutput('')
+      .setMimeType(ContentService.MimeType.TEXT)
+      .setHeader('Access-Control-Allow-Origin', NETLIFY_ORIGIN)
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  }
   // Validate authentication
   if (!validateAuth(e)) {
-    return createErrorResponse('Unauthorized', 401)
+    return createCORSResponse(JSON.stringify({ error: 'Unauthorized', status: 401 }));
   }
-
   try {
-    initializeSheets()
-
-    const action = e.parameter.action
-    const date = e.parameter.date
-    const startDate = e.parameter.startDate
-    const endDate = e.parameter.endDate
-
-    let responseData
+    initializeSheets();
+    const action = e.parameter.action;
+    const date = e.parameter.date;
+    const startDate = e.parameter.startDate;
+    const endDate = e.parameter.endDate;
+    let responseData;
     if (action === 'loadDailyData') {
-      responseData = loadDailyData(date)
+      responseData = loadDailyData(date);
     } else if (action === 'getRangeData') {
-      responseData = getRangeData(startDate, endDate)
+      responseData = getRangeData(startDate, endDate);
     } else if (action === 'getSettings') {
-      responseData = getSettings()
+      responseData = getSettings();
     } else if (action === 'getFoods') {
-      responseData = getFoods()
+      responseData = getFoods();
     } else {
-      responseData = { error: 'Invalid action' }
+      responseData = { error: 'Invalid action' };
     }
-
-    return ContentService.createTextOutput(JSON.stringify(responseData))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return createCORSResponse(JSON.stringify(responseData));
   } catch (error) {
-    return ContentService.createTextOutput(
-      JSON.stringify({ error: error.toString() })
-    ).setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return createCORSResponse(JSON.stringify({ error: error.toString() }));
   }
 }
 
@@ -223,70 +228,59 @@ function doGet(e) {
  * Handle POST requests
  */
 function doPost(e) {
+  // Handle preflight (_cors) requests
+  if (e && e.parameter && e.parameter._cors) {
+    return ContentService.createTextOutput('')
+      .setMimeType(ContentService.MimeType.TEXT)
+      .setHeader('Access-Control-Allow-Origin', NETLIFY_ORIGIN)
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  }
   // Validate authentication
   if (!validateAuth(e)) {
-    return createErrorResponse('Unauthorized', 401)
+    return createCORSResponse(JSON.stringify({ error: 'Unauthorized', status: 401 }));
   }
-
   try {
-    initializeSheets()
-
-    let data
-    let action
-
-    // Parse POST data - it comes as raw string in no-cors mode
+    initializeSheets();
+    let data;
+    let action;
+    // Parse POST data
     try {
-      let contents = e.postData.contents
+      let contents = e.postData.contents;
       if (!contents) {
-        // Try alternate access
-        contents = e.postData
+        contents = e.postData;
       }
-      
-      Logger.log('POST contents: ' + contents)
-      data = JSON.parse(contents)
-      action = data.action
-      Logger.log('Parsed action: ' + action)
+      Logger.log('POST contents: ' + contents);
+      data = JSON.parse(contents);
+      action = data.action;
+      Logger.log('Parsed action: ' + action);
     } catch (parseError) {
-      Logger.log('Parse error: ' + parseError)
-      return ContentService.createTextOutput(
-        JSON.stringify({ error: 'Failed to parse POST data: ' + parseError.toString() })
-      ).setMimeType(ContentService.MimeType.JSON)
+      Logger.log('Parse error: ' + parseError);
+      return createCORSResponse(JSON.stringify({ error: 'Failed to parse POST data: ' + parseError.toString() }));
     }
-
-    let responseData
-
+    let responseData;
     if (action === 'saveDailyData') {
-      saveDailyData(data)
-      responseData = { success: true, message: 'Daily data saved' }
+      saveDailyData(data);
+      responseData = { success: true, message: 'Daily data saved' };
     } else if (action === 'updateSettings') {
-      updateSettings(data)
-      responseData = { success: true, message: 'Settings updated' }
+      updateSettings(data);
+      responseData = { success: true, message: 'Settings updated' };
     } else if (action === 'syncFoods') {
-      syncFoods(data)
-      responseData = { success: true, message: 'Foods synced' }
+      syncFoods(data);
+      responseData = { success: true, message: 'Foods synced' };
     } else if (action === 'saveDailySummary') {
-      saveDailySummary(data)
-      responseData = { success: true, message: 'Daily summary saved' }
+      saveDailySummary(data);
+      responseData = { success: true, message: 'Daily summary saved' };
     } else if (action === 'saveStatistics') {
-      saveStatistics(data)
-      responseData = { success: true, message: 'Statistics saved' }
+      saveStatistics(data);
+      responseData = { success: true, message: 'Statistics saved' };
     } else {
-      responseData = { error: 'Invalid action: ' + action }
+      responseData = { error: 'Invalid action: ' + action };
     }
-
-    return ContentService.createTextOutput(JSON.stringify(responseData))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return createCORSResponse(JSON.stringify(responseData));
   } catch (error) {
-    Logger.log('Main error: ' + error)
-    return ContentService.createTextOutput(
-      JSON.stringify({ error: error.toString() })
-    ).setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    Logger.log('Main error: ' + error);
+    return createCORSResponse(JSON.stringify({ error: error.toString() }));
   }
 }
 
