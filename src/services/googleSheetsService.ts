@@ -27,14 +27,16 @@ export interface SyncData {
 }
 
 class GoogleSheetsService {
-  private deploymentUrl: string = ''
+  // Use Netlify Function proxy endpoint
+  private deploymentUrl: string = '/.netlify/functions/gas-proxy'
 
   /**
    * Initialize with Google Apps Script deployment URL
    * @param url - The URL from Apps Script deployment
    */
+  // No-op: deploymentUrl is now fixed to the Netlify Function
   initialize(url: string) {
-    this.deploymentUrl = url
+    // this.deploymentUrl = url
   }
 
   /**
